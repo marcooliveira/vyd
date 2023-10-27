@@ -13,26 +13,28 @@ This script processes a given video file and generates new video files based on 
 ```bash
 ./generateVideo.sh -i INPUTFILE -f FORMAT [-c CODEC] [-s STARTTIME] [-e ENDTIME] [-w WIDTH|-h HEIGHT] [-k KEYFRAME_DISTANCE] [-a AUTO_ALT_REF] [-l LAG_IN_FRAMES] BITRATE_PAIRS...
 ```
-See the script file for more detailed usage instructions and examples.
+To get usage instructions, execute the script without any arguments: `./generateVideo.sh`
 
 
-2. `pngToVideo.sh``
+### 2. `pngToVideo.sh`
 This script processes a directory of PNG images, applies a specified background color, and generates a video file from the processed images.
 
-Usage
+#### Usage
 
 ```bash
 ./pngToVideo.sh <input_folder> <output_folder> <background_color>
 ```
+To get usage instructions, execute the script without any arguments: `./pngToVideo.sh`
 
-3. `videoToPng.sh``
+### 3. `videoToPng.sh`
 This script extracts frames from a given video file and saves them as PNG images in a specified directory.
 
-Usage
+#### Usage
 
 ```bash
 ./videoToPng.sh <input_video> <output_folder>
 ```
+To get usage instructions, execute the script without any arguments: `./videoToPng.sh`
 
 ## Dependencies
 - FFmpeg: These scripts require FFmpeg to be installed on your system.
