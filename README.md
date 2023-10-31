@@ -1,40 +1,40 @@
-# Video Tools Repository
+# Vyd — Video Tools Repository
 
 This repository contains a set of scripts to assist in video processing tasks using FFmpeg. The scripts facilitate various operations such as video generation, video to PNG conversion, and PNG to video conversion.
 
 ## Scripts
 
-### 1. `generateVideo.sh`
+### 1. `vydGenerateVideo`
 
 This script processes a given video file and generates new video files based on the specified parameters such as start time, end time, scaling, bitrate, and others.
 
 #### Usage
 
 ```bash
-./generateVideo.sh -i INPUTFILE -f FORMAT [-c CODEC] [-s STARTTIME] [-e ENDTIME] [-w WIDTH|-h HEIGHT] [-k KEYFRAME_DISTANCE] [-a AUTO_ALT_REF] [-l LAG_IN_FRAMES] BITRATE_PAIRS...
+./vydGenerateVideo -i INPUTFILE -f FORMAT [-c CODEC] [-s STARTTIME] [-e ENDTIME] [-w WIDTH|-h HEIGHT] [-k KEYFRAME_DISTANCE] [-a AUTO_ALT_REF] [-l LAG_IN_FRAMES] BITRATE_PAIRS...
 ```
-To get usage instructions, execute the script without any arguments: `./generateVideo.sh`
+To get usage instructions, execute the script without any arguments: `./vydGenerateVideo`
 
 
-### 2. `pngToVideo.sh`
+### 2. `vydPngToVideo`
 This script processes a directory of PNG images, applies a specified background color, and generates a video file from the processed images.
 
 #### Usage
 
 ```bash
-./pngToVideo.sh <input_folder> <output_folder> <background_color>
+./vydPngToVideo <input_folder> <output_folder> <background_color>
 ```
-To get usage instructions, execute the script without any arguments: `./pngToVideo.sh`
+To get usage instructions, execute the script without any arguments: `./vydPngToVideo`
 
-### 3. `videoToPng.sh`
+### 3. `vydVideoToPng`
 This script extracts frames from a given video file and saves them as PNG images in a specified directory.
 
 #### Usage
 
 ```bash
-./videoToPng.sh <input_video> <output_folder>
+./vydVideoToPng <input_video> <output_folder>
 ```
-To get usage instructions, execute the script without any arguments: `./videoToPng.sh`
+To get usage instructions, execute the script without any arguments: `./vydVideoToPng`
 
 ## Dependencies
 - FFmpeg: These scripts require FFmpeg to be installed on your system.
