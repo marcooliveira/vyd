@@ -1,6 +1,6 @@
-# Vyd — Video Tools Repository
+# Vyd — Video & Image Tools Repository
 
-This repository contains a set of scripts to assist in video processing tasks using FFmpeg. The scripts facilitate various operations such as video generation, video to PNG conversion, and PNG to video conversion.
+This repository contains a set of scripts to assist in video and image processing tasks. The scripts facilitate various operations such as video and image generation, video to PNG conversion, and PNG to video conversion.
 
 ## Scripts
 
@@ -36,8 +36,20 @@ This script extracts frames from a given video file and saves them as PNG images
 ```
 To get usage instructions, execute the script without any arguments: `./vydVideoToPng`
 
+### 4. vydGenerateImage
+
+This script processes a given image and generates new image based on the specified parameters.
+
+#### Usage
+
+```bash
+./vydGenerateImage -i INPUT_IMAGE [-o OUTPUT_IMAGE] [-w WIDTH] [-h HEIGHT] [-of OBJECT_FIT] [-f FORMAT] [-q QUALITY]...
+```
+To get usage instructions, execute the script without any arguments: `./vydGenerateImage`
+
 ## Dependencies
-- FFmpeg: These scripts require FFmpeg to be installed on your system.
+- [FFmpeg](https://ffmpeg.org/): Required for video processing scripts.
+- [ImageMagick](https://imagemagick.org/): Required for the image resizing script.
 
 ## Contributing
 Contributions are welcome! Please feel free to submit a Pull Request.

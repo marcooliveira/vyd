@@ -1,0 +1,139 @@
+#!/bin/bash
+
+# Define some colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Initialize total elapsed time
+TOTAL_START_TIME=$(date +%s)
+
+# Check if ImageMagick is installed
+if ! command -v convert &> /dev/null; then
+    echo -e "${RED}ImageMagick could not be found, please install it.${NC}"
+    exit 1
+fi
+
+# Default settings
+width=""
+height=""
+object_fit="fill"  # Corresponds to CSS 'object-fit'
+format=""
+declare -a qualities  # Array to store multiple quality values
+declare -a input_images # Array to store multiple input images
+
+# Usage message
+function usage {
+    echo -e "${YELLOW}Usage: $0 [-i <input_image>]... [-w <width>] [-h <height>] [-of <object_fit>] [-f <format>] [-q <quality>]...${NC}"
+    echo ""
+    echo "Options:"
+    echo -e "  ${GREEN}-i${NC}  Input image file (can be specified multiple times)"
+    echo -e "  ${GREEN}-w${NC}  Width (optional)"
+    echo -e "  ${GREEN}-h${NC}  Height (optional)"
+    echo -e "  ${GREEN}-of${NC} Object fit option (fill, contain, cover, scale-down, none) (optional)"
+    echo -e "  ${GREEN}-f${NC}  Format (jpg, png, etc.) (optional)"
+    echo -e "  ${GREEN}-q${NC}  Quality (1-100) (can be specified multiple times, optional)"
+    echo ""
+    exit 1
+}
+
+# Parse command-line options
+while getopts ':i:w:h:of:f:q:' flag; do
+  case "${flag}" in
+    i) input_images+=("${OPTARG}") ;;
+    w) width="${OPTARG}" ;;
+    h) height="${OPTARG}" ;;
+    of) object_fit="${OPTARG}" ;;
+    f) format="${OPTARG}" ;;
+    q) qualities+=("${OPTARG}") ;;
+    :) echo -e "${RED}Option -$OPTARG requires an argument.${NC}" >&2; exit 1 ;;
+    \?) usage ;;
+  esac
+done
+
+# Check mandatory input
+if [ ${#input_images[@]} -eq 0 ]; then
+  echo -e "${RED}At least one input image is required${NC}"
+  usage
+fi
+
+# Process each image
+for input_image in "${input_images[@]}"; do
+  # Generate the output filename based on transformations
+  base_filename="${input_image%.*}"
+  extension="${input_image##*.}"
+  if [ -n "$format" ]; then
+    extension=$format
+  fi
+  output_filename="${base_filename}_${width}w-${height}h-of_${object_fit}.${extension}"
+
+  # Construct convert command
+  convert_cmd="convert $input_image"
+
+  # Add resizing options based on object-fit equivalent
+  if [ -n "$width" ] && [ -n "$height" ]; then
+    case "$object_fit" in
+      fill)
+        convert_cmd+=" -resize ${width}x${height}^"
+        convert_cmd+=" -gravity center -extent ${width}x${height}"
+        ;;
+      contain)
+        convert_cmd+=" -resize ${width}x${height}"
+        ;;
+      cover)
+        convert_cmd+=" -resize ${width}x${height}^"
+        convert_cmd+=" -gravity center -crop ${width}x${height}+0+0 +repage"
+        ;;
+      scale-down)
+        convert_cmd+=" -resize ${width}x${height}>"
+        ;;
+      none)
+        # Do nothing, no resize
+        ;;
+      *)
+        echo -e "${RED}Invalid object-fit option: $object_fit${NC}"
+        exit 1
+        ;;
+    esac
+  elif [ -n "$width" ]; then
+    convert_cmd+=" -resize ${width}"
+  elif [ -n "$height" ]; then
+    convert_cmd+=" -resize x${height}"
+  fi
+
+  # Add format to the command
+  if [ -n "$format" ]; then
+    convert_cmd+=" -format $format"
+  fi
+
+  # Add quality to the command if specified
+  if [ ${#qualities[@]} -gt 0 ]; then
+    for quality in "${qualities[@]}"; do
+      # Add quality to the command
+      convert_cmd+=" -quality $quality"
+      output_filename="${base_filename}_${width}w-${height}h-of_${object_fit}_q-${quality}.${extension}"
+    done
+  fi
+
+  # Run the convert command
+  $convert_cmd $output_filename
+
+  # Check the result of the operation and output the result
+  if [ $? -eq 0 ]; then
+    if [ ${#qualities[@]} -gt 0 ]; then
+      for quality in "${qualities[@]}"; do
+        echo -e "${GREEN}Image '$input_image' has been processed with quality $quality and saved as '$output_filename'.${NC}"
+      done
+    else
+      echo -e "${GREEN}Image '$input_image' has been processed and saved as '$output_filename' without quality compression.${NC}"
+    fi
+  else
+    echo -e "${RED}Failed to process image '$input_image'.${NC}"
+  fi
+done
+
+# Calculate elapsed time for this job
+JOB_END_TIME=$(date +%s)
+JOB_ELAPSED_TIME=$((JOB_END_TIME - TOTAL_START_TIME))
+echo -e "${YELLOW}Total elapsed time: $JOB_ELAPSED_TIME seconds${NC}"

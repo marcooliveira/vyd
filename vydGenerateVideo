@@ -140,7 +140,7 @@ function generate {
 }
 
 if [ -z "$INPUT_FILE" ]; then
-    echo "Input file is required" >&2
+    echo "Input video is required" >&2
     usage
 fi
 
