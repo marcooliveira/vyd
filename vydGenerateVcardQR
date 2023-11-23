@@ -1,0 +1,109 @@
+#!/bin/bash
+
+# Define colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Initialize start time
+TOTAL_START_TIME=$(date +%s)
+
+function log {
+    COLOR=$1
+    MESSAGE=$2
+    echo -e "${!COLOR}${MESSAGE}${NC}"
+}
+
+function usage {
+    echo -e "${YELLOW}Usage: $0 -f FIRST_NAME -l LAST_NAME -e EMAIL -p PHONE -w WIDTH_IN_PIXELS -o OUTPUT_FILE [optional parameters]${NC}"
+    echo ""
+    echo "Required Options:"
+    echo -e "  ${GREEN}-f FIRST_NAME${NC}            First name"
+    echo -e "  ${GREEN}-l LAST_NAME${NC}             Last name"
+    echo -e "  ${GREEN}-e EMAIL${NC}                 Email address"
+    echo -e "  ${GREEN}-p PHONE${NC}                 Phone number"
+    echo -e "  ${GREEN}-o OUTPUT_FILE${NC}           Output file name (e.g., vcard-qr.png)"
+    echo ""
+    echo "Optional Options:"
+    echo -e "  ${GREEN}-g ORGANIZATION${NC}          Organization or company name"
+    echo -e "  ${GREEN}-j JOB_TITLE${NC}             Job title"
+    echo -e "  ${GREEN}-a ADDRESS${NC}               Work address"
+    echo -e "  ${GREEN}-u URL${NC}                   Website URL"
+    echo -e "  ${GREEN}-c FOREGROUND_COLOR${NC}      Color of the dots in the QR code"
+    echo -e "  ${GREEN}-b BACKGROUND_COLOR${NC}      Background color of the QR code"
+    echo -e "  ${GREEN}-s STYLE${NC}                 Style of the QR code (e.g., square (default), round)"
+    echo -e "  ${GREEN}-w WIDTH_IN_PIXELS${NC}       Width of the QR code in pixels (defaults to 500)"
+    echo ""
+    exit
+}
+
+# Default values
+FORMAT="png"
+FOREGROUND_COLOR="000000"
+BACKGROUND_COLOR="ffffff00"
+MODULE_SIZE=250
+STYLE="square"
+WIDTH_IN_PIXELS=500
+
+while getopts "f:l:e:p:w:o:g:j:a:u:c:b:s:h" flag; do
+    case "${flag}" in
+        f) FIRST_NAME=${OPTARG};;
+        l) LAST_NAME=${OPTARG};;
+        e) EMAIL=${OPTARG};;
+        p) PHONE=${OPTARG};;
+        w) WIDTH_IN_PIXELS=${OPTARG};;
+        o) OUTPUT_FILE=${OPTARG};;
+        g) ORGANIZATION=${OPTARG};;
+        j) JOB_TITLE=${OPTARG};;
+        a) ADDRESS=${OPTARG};;
+        u) URL=${OPTARG};;
+        c) FOREGROUND_COLOR=${OPTARG};;
+        b) BACKGROUND_COLOR=${OPTARG};;
+        s) STYLE=${OPTARG};;
+        h) usage;;
+        ?) usage;;
+    esac
+done
+
+if [[ -z "$FIRST_NAME" || -z "$LAST_NAME" || -z "$EMAIL" || -z "$PHONE" || -z "$OUTPUT_FILE" ]]; then
+    log "RED" "All required fields must be provided."
+    usage
+fi
+
+# Create unique temporary vCard and QR code files
+VCARD_FILE=$(mktemp ./vcard-XXXXXX.txt)
+TMP_FILE=$(mktemp ./qr-XXXXXX.png)
+{
+    echo "BEGIN:VCARD"
+    echo "VERSION:3.0"
+    echo "N:$LAST_NAME;$FIRST_NAME"
+    echo "FN:$FIRST_NAME $LAST_NAME"
+    echo "EMAIL;WORK;INTERNET:$EMAIL"
+    echo "TEL;CELL:$PHONE"
+    [[ -n "$ORGANIZATION" ]] && echo "ORG:$ORGANIZATION"
+    [[ -n "$JOB_TITLE" ]] && echo "TITLE:$JOB_TITLE"
+    [[ -n "$ADDRESS" ]] && echo "ADR:;;$ADDRESS"
+    [[ -n "$URL" ]] && echo "URL:$URL"
+    echo "END:VCARD"
+} > "$VCARD_FILE"
+log "RED" $TMP_FILE
+# Generate QR Code with specified style
+CMD="qrencode -l M -t $FORMAT -o \"$TMP_FILE\" -s $MODULE_SIZE --foreground=${FOREGROUND_COLOR:-$FOREGROUND_COLOR} --background=${BACKGROUND_COLOR:-$BACKGROUND_COLOR} -d ${STYLE:-$STYLE} -r \"$VCARD_FILE\""
+eval $CMD
+
+# Resize image to the specified width using ImageMagick
+if [[ -n "$WIDTH_IN_PIXELS" && "$WIDTH_IN_PIXELS" -gt 0 ]]; then
+    convert "$TMP_FILE" -resize "${WIDTH_IN_PIXELS}x" "$OUTPUT_FILE"
+else
+    log "RED" "Invalid width specified: $WIDTH_IN_PIXELS"
+    exit 1
+fi
+
+# Clean up temporary files
+rm "$TMP_FILE" "$VCARD_FILE"
+
+# Calculate total elapsed time
+TOTAL_END_TIME=$(date +%s)
+TOTAL_ELAPSED_TIME=$((TOTAL_END_TIME - TOTAL_START_TIME))
+log "YELLOW" "Total elapsed time: $TOTAL_ELAPSED_TIME seconds"
