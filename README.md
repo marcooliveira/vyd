@@ -17,12 +17,13 @@ To get usage instructions, execute the script without any arguments: `./vydGener
 
 
 ### 2. `vydPngToVideo`
-This script processes a directory of PNG images, applies a specified background color, and generates a video file from the processed images.
+
+This script processes a directory of PNG images, applies a specified background color, and generates a high-quality video file from the processed images. It uses a unique temporary folder for each execution to prevent collisions when running the script simultaneously.
 
 #### Usage
 
 ```bash
-./vydPngToVideo <input_folder> <output_folder> <background_color>
+./vydPngToVideo [-f] [-r frame_rate] <input_folder> <output_folder> [<background_color>]
 ```
 To get usage instructions, execute the script without any arguments: `./vydPngToVideo`
 
@@ -36,6 +37,7 @@ This script extracts frames from a given video file and saves them as PNG images
 ```
 To get usage instructions, execute the script without any arguments: `./vydVideoToPng`
 
+
 ### 4. vydGenerateImage
 
 This script processes a given image and generates new image based on the specified parameters.
@@ -47,20 +49,28 @@ This script processes a given image and generates new image based on the specifi
 ```
 To get usage instructions, execute the script without any arguments: `./vydGenerateImage`
 
+
 ### 5. vydGenerateVcardQR
 
 This script generates a QR code for a vCard containing essential contact information. It supports customization of QR code attributes, including format, foreground and background color, and size. Unique temporary files are used for each execution to support parallel running of the script.
-
-
 
 #### Usage
 
 ```bash
 ./vydGenerateVcardQR -f FIRST_NAME -l LAST_NAME -e EMAIL -p PHONE -o OUTPUT_FILE [-g ORGANIZATION] [-j JOB_TITLE] [-a ADDRESS] [-u URL] [-c FOREGROUND_COLOR] [-b BACKGROUND_COLOR] [-w WIDTH_IN_PIXELS]
 ```
-
 To get usage instructions, execute the script without any arguments: `./vydGenerateVcardQR`
 
+
+### 6. vydGenerateLinkQR
+
+This script generates a QR code from a given URL and saves it as an image file. It supports customization of QR code attributes, including color, size, and format.
+
+#### Usage
+```bash
+./vydGenerateLinkQR -u URL -o OUTPUT_FILE -w WIDTH_IN_PIXELS [optional parameters]
+```
+To get usage instructions, execute the script without any arguments: `./vydGenerateLinkQR`
 
 ## Dependencies
 - [FFmpeg](https://ffmpeg.org/): Required for video processing scripts.
