@@ -38,7 +38,7 @@ This script extracts frames from a given video file and saves them as PNG images
 To get usage instructions, execute the script without any arguments: `./vydVideoToPng`
 
 
-### 4. vydGenerateImage
+### 4. `vydGenerateImage`
 
 This script processes a given image and generates new image based on the specified parameters.
 
@@ -50,7 +50,7 @@ This script processes a given image and generates new image based on the specifi
 To get usage instructions, execute the script without any arguments: `./vydGenerateImage`
 
 
-### 5. vydGenerateVcardQR
+### 5. `vydGenerateVcardQR`
 
 This script generates a QR code for a vCard containing essential contact information. It supports customization of QR code attributes, including format, foreground and background color, and size. Unique temporary files are used for each execution to support parallel running of the script.
 
@@ -62,7 +62,7 @@ This script generates a QR code for a vCard containing essential contact informa
 To get usage instructions, execute the script without any arguments: `./vydGenerateVcardQR`
 
 
-### 6. vydGenerateLinkQR
+### 6. `vydGenerateLinkQR`
 
 This script generates a QR code from a given URL and saves it as an image file. It supports customization of QR code attributes, including color, size, and format.
 
