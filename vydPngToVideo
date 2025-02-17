@@ -1,47 +1,69 @@
 #!/bin/bash
 
-# Check if all required arguments are provided
-if [ $# -lt 3 ]; then
-  echo "Usage: $0 <input_folder> <output_folder> <background_color>"
-  exit 1
-fi
+# Define colors for output and default values
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
+background_color="000000"
+frame_rate=30
 
-# Assign arguments to variables
+# Generate a unique temporary folder for this execution
+temp_folder=$(mktemp -d -t processed_images_XXXXXX)
+
+# Check for flags and parameters
+while getopts ":f:r:" opt; do
+  case $opt in
+    f) force_replace=1 ;;
+    r) frame_rate="${OPTARG}" ;;
+    \?) echo -e "${RED}Invalid option: -$OPTARG${NC}" >&2; exit 1 ;;
+  esac
+done
+shift $((OPTIND-1))
+
+# Function to display usage instructions
+function usage {
+    echo -e "${RED}Usage: $0 [-f] [-r frame_rate] <input_folder> <output_folder> [<background_color>]${NC}"
+    echo -e "  -f: Force replace existing output file without prompting."
+    echo -e "  -r: Set the frame rate for the output video (default is 30)."
+    echo -e "  <input_folder>: Folder containing PNG images to process."
+    echo -e "  <output_folder>: Folder where processed images and output video will be saved."
+    echo -e "  [<background_color>]: Optional hex color for the video background (default: #000000)."
+    echo ""
+    echo "Example:"
+    echo -e "  ${RED}$0 -f -r 24 /path/to/input /path/to/output #000000${NC}"
+    exit 1
+}
+
+# Validate and assign arguments
+if [ $# -lt 2 ]; then
+    echo -e "${RED}Error: Missing required arguments.${NC}"
+    usage
+fi
 input_folder="$1"
 output_folder="$2"
-background_color="$3"
+background_color="${3:-$background_color}" # Default to black if not provided
 
-# Check if the output folder exists
-if [ -d "$output_folder" ]; then
-  echo "Output folder '$output_folder' already exists. Please provide a different folder name."
-  exit 1
-fi
-
-# Create the output folder
+# Create the output folder if it doesn't exist
 mkdir -p "$output_folder"
 
-# Initialize a counter for renaming files
-counter=1
-
-# Iterate over each PNG file in the input folder
-for file in "$input_folder"/*.png; do
-  
-  # Generate the new filename and its path in the output folder
-  # Using printf to format the counter as four digits
-  new_filename=$(printf "%04d.png" "$counter")
-  modified_filepath="$output_folder/$new_filename"
-
-  # Apply the background color and flatten the PNG file using FFmpeg
-  ffmpeg -i "$file" -vf "[0:v]split[a][b];[b]color=$background_color[c];[a][c]overlay" -c:v png "$modified_filepath"
-
-  echo "Processed: $file as $new_filename"
-  
-  # Increment the counter
-  ((counter++))
+# Apply background to PNG files using ImageMagick
+find "$input_folder" -name '*.png' | sort -V | while IFS= read -r file; do
+    filename=$(basename -- "$file")
+    # Use ImageMagick to composite the PNG over a solid background
+    convert "$file" -background "#${background_color}" -flatten "$temp_folder/$filename"
+    echo -e "${GREEN}Processed with background: $filename${NC}"
 done
 
-# Generate the video using FFmpeg
-output_video="$output_folder/output.mp4"
-ffmpeg -framerate 30 -i "$output_folder/%04d.png" -c:v libx264 -pix_fmt yuv420p "$output_video"
+# Generate high-quality video from processed images
+output_video="$output_folder/output_${background_color}.mp4"
+ffmpeg -framerate "$frame_rate" -pattern_type glob -i "$temp_folder/*.png" -c:v libx264 -pix_fmt yuv420p -crf 10 -preset slow "$output_video"
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}Video generated: $output_video${NC}"
+else
+    echo -e "${RED}Failed to generate video: $output_video${NC}"
+    exit 1
+fi
 
-echo "Video generated: $output_video"
+# Cleanup temporary folder
+rm -rf "$temp_folder"
+echo -e "${GREEN}Temporary files cleaned up.${NC}"
