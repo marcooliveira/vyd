@@ -72,6 +72,17 @@ This script generates a QR code from a given URL and saves it as an image file. 
 ```
 To get usage instructions, execute the script without any arguments: `./vydGenerateLinkQR`
 
+### 7. `vydSplitImage`
+
+This script splits one or more images (JPG, JPEG, PNG, or GIF) horizontally into two halves (left and right). It supports both individual image files and directories containing images.
+
+#### Usage
+
+```bash
+./vydSplitImage [-h] [-i <image_file_or_directory>]... [-a <archive_directory>] [--remove]
+```
+To get usage instructions, execute the script without any arguments: `./vydSplitImage`
+
 ## Dependencies
 - [FFmpeg](https://ffmpeg.org/): Required for video processing scripts.
 - [ImageMagick](https://imagemagick.org/): Required for the image resizing script.
