@@ -1,0 +1,158 @@
+#!/bin/bash
+
+# Define colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Function to display usage information
+usage() {
+    echo -e "${YELLOW}Usage: $0 [-h] [-i <image_file_or_directory>]... [-a <archive_directory>] [--remove]${NC}"
+    echo ""
+    echo "Options:"
+    echo -e "  ${GREEN}-i${NC}  Specify an image file or directory to process (can be specified multiple times)"
+    echo -e "  ${GREEN}-a${NC}  Specify the name of the archive directory for original files (default: 'originals')"
+    echo -e "  ${GREEN}--remove${NC}  Delete original files after processing"
+    echo -e "  ${GREEN}-h${NC}  Display this help message"
+    echo ""
+    exit 1
+}
+
+# Check if ImageMagick's 'magick' command is available
+if ! command -v magick &> /dev/null; then
+    echo -e "${RED}ImageMagick is not installed. Please install it to proceed.${NC}"
+    exit 1
+fi
+
+# Default values
+archive_dir_name="originals"
+remove_originals=false
+declare -a input_paths
+
+# Parse command-line options
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -i)
+            input_paths+=("$2")
+            shift 2
+            ;;
+        -a)
+            archive_dir_name="$2"
+            shift 2
+            ;;
+        --remove)
+            remove_originals=true
+            shift
+            ;;
+        -h)
+            usage
+            ;;
+        *)
+            echo -e "${RED}Unknown option: $1${NC}"
+            usage
+            ;;
+    esac
+done
+
+# Ensure at least one input path is provided
+if [ ${#input_paths[@]} -eq 0 ]; then
+    echo -e "${RED}No input files or directories specified.${NC}"
+    usage
+fi
+
+# Function to process and split an image
+process_image() {
+    local input_image="$1"
+    local input_dir
+    input_dir=$(dirname "$input_image")
+    local filename
+    filename=$(basename "$input_image")
+    local extension="${filename##*.}"
+    local base_name="${filename%.*}"
+
+    # Get image dimensions
+    local width
+    width=$(magick identify -format "%w" "$input_image")
+    local height
+    height=$(magick identify -format "%h" "$input_image")
+
+    # Calculate half-width
+    local half_width=$((width / 2))
+
+    # Define output filenames
+    local left_image="${input_dir}/${base_name}_left.${extension}"
+    local right_image="${input_dir}/${base_name}_right.${extension}"
+
+    # Split the image into left and right halves
+    magick "$input_image" -crop "${half_width}x${height}+0+0" +repage "$left_image"
+    magick "$input_image" -crop "${half_width}x${height}+$half_width+0" +repage "$right_image"
+
+    echo -e "${GREEN}Processed '$input_image' into '$left_image' and '$right_image'.${NC}"
+
+    # Handle original file
+    if $remove_originals; then
+        rm "$input_image"
+        echo -e "${YELLOW}Deleted original file '$input_image'.${NC}"
+    else
+        local archive_dir="${input_dir}/${archive_dir_name}"
+        mkdir -p "$archive_dir"
+        mv "$input_image" "$archive_dir/"
+        echo -e "${YELLOW}Moved original file '$input_image' to '$archive_dir/'.${NC}"
+    fi
+}
+
+# Function to process all images in a directory
+process_directory() {
+    local dir="$1"
+    shopt -s nullglob
+    for img in "$dir"/*.{jpg,jpeg,png,gif}; do
+        process_image "$img"
+        ((processed_count++))
+        update_progress_bar
+    done
+    shopt -u nullglob
+}
+
+# Function to update the progress bar
+update_progress_bar() {
+    local progress=$((processed_count * 100 / total_files))
+    local done=$((progress * bar_length / 100))
+    local left=$((bar_length - done))
+    local done_str=$(printf "%${done}s" | tr ' ' '#')
+    local left_str=$(printf "%${left}s" | tr ' ' '-')
+    printf "\rProgress: [${done_str}${left_str}] ${progress}%%"
+}
+
+# Main script execution
+total_files=0
+processed_count=0
+bar_length=50
+
+# Count total number of files to process
+for input in "${input_paths[@]}"; do
+    if [ -f "$input" ]; then
+        ((total_files++))
+    elif [ -d "$input" ]; then
+        shopt -s nullglob
+        file_count=$(ls "$input"/*.{jpg,jpeg,png,gif} 2>/dev/null | wc -l)
+        ((total_files+=file_count))
+        shopt -u nullglob
+    fi
+done
+
+# Process each input path
+for input in "${input_paths[@]}"; do
+    if [ -f "$input" ]; then
+        process_image "$input"
+        ((processed_count++))
+        update_progress_bar
+    elif [ -d "$input" ]; then
+        process_directory "$input"
+    else
+        echo -e "${RED}'$input' is not a valid file or directory.${NC}"
+    fi
+done
+
+# Finalize progress bar
+echo -e "\n${GREEN}Processing complete.${NC}"
