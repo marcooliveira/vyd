@@ -72,12 +72,17 @@ fi
 
 function generate {
     if [ "$FORMAT" = "mp4" ]; then
+        # Default to empty unless h265
+        TAG_PARAM=""
+
         if [ "$CODEC" = "h264" ]; then
             CODEC="libx264"
             KEYFRAME_PARAM="-x264-params keyint=$KEYFRAME_DISTANCE:scenecut=0"
         elif [ "$CODEC" = "h265" ]; then
             CODEC="libx265"
             KEYFRAME_PARAM="-x265-params keyint=$KEYFRAME_DISTANCE:scenecut=0"
+            # Force 'hvc1' tag for better QuickTime compatibility:
+            TAG_PARAM="-tag:v hvc1"
         else
             echo "Invalid codec: ${CODEC}. Only 'h264' and 'h265' are supported when format is 'mp4'."
             exit 1
@@ -120,8 +125,8 @@ function generate {
 
             echo -e "${GREEN}Processing file '${INPUT_FILE}' with format '${FORMAT}', start time '${START_TIME}', end time '${END_TIME}', scale '${SCALE}', keyframe distance '${KEYFRAME_DISTANCE}', codec '${CODEC}', target bitrate: ${TARGET_BITRATE} and max bitrate: ${MAX_BITRATE}${NC}"
 
-            ffmpeg -y -ss "$START_TIME" -i "$INPUT_FILE" ${END_TIME:+-to "$END_TIME"} -vcodec $CODEC -pix_fmt $PIX_FMT $PROFILE -vf "scale=${SCALE}" $PRESET -pass 1 -b:v $TARGET_BITRATE $KEYFRAME_PARAM $ADDITIONAL_PARAMS -an -f $FORMAT /dev/null
-            ffmpeg -ss "$START_TIME" -i "$INPUT_FILE" ${END_TIME:+-to "$END_TIME"} -vcodec $CODEC -pix_fmt $PIX_FMT $PROFILE -vf "scale=${SCALE}" $PRESET -pass 2 -b:v $MAX_BITRATE $KEYFRAME_PARAM $ADDITIONAL_PARAMS $MOVFLAGS "$OUTPUT_FILE"
+            ffmpeg -y -ss "$START_TIME" -i "$INPUT_FILE" ${END_TIME:+-to "$END_TIME"} -vcodec $CODEC -pix_fmt $PIX_FMT $PROFILE -vf "scale=${SCALE}" $PRESET -pass 1 -b:v $TARGET_BITRATE $KEYFRAME_PARAM $ADDITIONAL_PARAMS $TAG_PARAM -an -f $FORMAT /dev/null
+            ffmpeg -ss "$START_TIME" -i "$INPUT_FILE" ${END_TIME:+-to "$END_TIME"} -vcodec $CODEC -pix_fmt $PIX_FMT $PROFILE -vf "scale=${SCALE}" $PRESET -pass 2 -b:v $MAX_BITRATE $KEYFRAME_PARAM $ADDITIONAL_PARAMS $MOVFLAGS $TAG_PARAM "$OUTPUT_FILE"
         else
             TARGET_BITRATE="$bitrate"
             OUTPUT_FILE="${INPUT_FILE%.*}-vbr_${TARGET_BITRATE}-start_${START_TIME//:/-}-end_${END_TIME//:/-}-scale_${SCALE//:/x}-keyframe_${KEYFRAME_DISTANCE}-altref_${AUTO_ALT_REF}-lag_${LAG_IN_FRAMES}.${FORMAT}"
