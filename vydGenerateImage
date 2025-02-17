@@ -20,26 +20,29 @@ width=""
 height=""
 object_fit="fill"  # Corresponds to CSS 'object-fit'
 format=""
+overwrite=false
+backup_dir=""
 declare -a qualities  # Array to store multiple quality values
 declare -a input_images # Array to store multiple input images
 
 # Usage message
 function usage {
-    echo -e "${YELLOW}Usage: $0 [-i <input_image>]... [-w <width>] [-h <height>] [-of <object_fit>] [-f <format>] [-q <quality>]...${NC}"
+    echo -e "${YELLOW}Usage: $0 [-i <input_image>]... [-w <width>] [-h <height>] [-of <object_fit>] [-f <format>] [-q <quality>]... [-o [backup_dir]]${NC}"
     echo ""
     echo "Options:"
-    echo -e "  ${GREEN}-i${NC}  Input image file (can be specified multiple times)"
+    echo -e "  ${GREEN}-i${NC}  Input image file or directory (can be specified multiple times)"
     echo -e "  ${GREEN}-w${NC}  Width (optional)"
     echo -e "  ${GREEN}-h${NC}  Height (optional)"
     echo -e "  ${GREEN}-of${NC} Object fit option (fill, contain, cover, scale-down, none) (optional)"
     echo -e "  ${GREEN}-f${NC}  Format (jpg, png, etc.) (optional)"
     echo -e "  ${GREEN}-q${NC}  Quality (1-100) (can be specified multiple times, optional)"
+    echo -e "  ${GREEN}-o${NC}  Overwrite original files (destructive). If a directory name is provided, backs up originals first."
     echo ""
     exit 1
 }
 
 # Parse command-line options
-while getopts ':i:w:h:of:f:q:' flag; do
+while getopts ':i:w:h:of:f:q:o::' flag; do
   case "${flag}" in
     i) input_images+=("${OPTARG}") ;;
     w) width="${OPTARG}" ;;
@@ -47,6 +50,7 @@ while getopts ':i:w:h:of:f:q:' flag; do
     of) object_fit="${OPTARG}" ;;
     f) format="${OPTARG}" ;;
     q) qualities+=("${OPTARG}") ;;
+    o) overwrite=true; backup_dir="${OPTARG}" ;;
     :) echo -e "${RED}Option -$OPTARG requires an argument.${NC}" >&2; exit 1 ;;
     \?) usage ;;
   esac
@@ -58,79 +62,96 @@ if [ ${#input_images[@]} -eq 0 ]; then
   usage
 fi
 
-# Process each image
-for input_image in "${input_images[@]}"; do
-  # Generate the output filename based on transformations
+function process_image {
+  input_image="$1"
   base_filename="${input_image%.*}"
   extension="${input_image##*.}"
   if [ -n "$format" ]; then
-    extension=$format
+    extension="$format"
   fi
-  output_filename="${base_filename}_${width}w-${height}h-of_${object_fit}.${extension}"
 
-  # Construct convert command
-  convert_cmd="convert $input_image"
+  declare -a convert_cmd=("convert" "$input_image")
 
   # Add resizing options based on object-fit equivalent
   if [ -n "$width" ] && [ -n "$height" ]; then
-    case "$object_fit" in
-      fill)
-        convert_cmd+=" -resize ${width}x${height}^"
-        convert_cmd+=" -gravity center -extent ${width}x${height}"
-        ;;
-      contain)
-        convert_cmd+=" -resize ${width}x${height}"
-        ;;
-      cover)
-        convert_cmd+=" -resize ${width}x${height}^"
-        convert_cmd+=" -gravity center -crop ${width}x${height}+0+0 +repage"
-        ;;
-      scale-down)
-        convert_cmd+=" -resize ${width}x${height}>"
-        ;;
-      none)
-        # Do nothing, no resize
-        ;;
-      *)
-        echo -e "${RED}Invalid object-fit option: $object_fit${NC}"
-        exit 1
-        ;;
-    esac
-  elif [ -n "$width" ]; then
-    convert_cmd+=" -resize ${width}"
-  elif [ -n "$height" ]; then
-    convert_cmd+=" -resize x${height}"
-  fi
+  case "$object_fit" in
+    fill)
+      convert_cmd+=("-resize" "${width}x${height}^")
+      convert_cmd+=("-gravity" "center" "-extent" "${width}x${height}")
+      ;;
+    contain)
+      convert_cmd+=("-resize" "${width}x${height}")
+      ;;
+    cover)
+      convert_cmd+=("-resize" "${width}x${height}^")
+      convert_cmd+=("-gravity" "center" "-crop" "${width}x${height}+0+0" "+repage")
+      ;;
+    scale-down)
+      convert_cmd+=("-resize" "${width}x${height}>")
+      ;;
+    none)
+      ;; # Do nothing
+    *)
+      echo -e "${RED}Invalid object-fit option: $object_fit${NC}"
+      exit 1
+      ;;
+  esac
+elif [ -n "$width" ]; then
+  convert_cmd+=("-resize" "${width}")
+elif [ -n "$height" ]; then
+  convert_cmd+=("-resize" "x${height}")
+fi
 
-  # Add format to the command
-  if [ -n "$format" ]; then
-    convert_cmd+=" -format $format"
-  fi
-
-  # Add quality to the command if specified
+  # Process each specified quality
   if [ ${#qualities[@]} -gt 0 ]; then
     for quality in "${qualities[@]}"; do
-      # Add quality to the command
-      convert_cmd+=" -quality $quality"
-      output_filename="${base_filename}_${width}w-${height}h-of_${object_fit}_q-${quality}.${extension}"
+      if [ "$overwrite" = true ]; then
+        if [ -n "$backup_dir" ]; then
+          mkdir -p "$backup_dir"
+          cp "$input_image" "$backup_dir/"
+        fi
+        output_filename="$input_image"
+      else
+        output_filename="${base_filename}_${width}w-${height}h-of_${object_fit}_q-${quality}.${extension}"
+      fi
+      
+      current_cmd=("${convert_cmd[@]}")
+      current_cmd+=("-quality" "$quality")
+      "${current_cmd[@]}" "$output_filename"
     done
-  fi
-
-  # Run the convert command
-  $convert_cmd $output_filename
-
-  # Check the result of the operation and output the result
-  if [ $? -eq 0 ]; then
-    if [ ${#qualities[@]} -gt 0 ]; then
-      for quality in "${qualities[@]}"; do
-        echo -e "${GREEN}Image '$input_image' has been processed with quality $quality and saved as '$output_filename'.${NC}"
-      done
-    else
-      echo -e "${GREEN}Image '$input_image' has been processed and saved as '$output_filename' without quality compression.${NC}"
-    fi
   else
-    echo -e "${RED}Failed to process image '$input_image'.${NC}"
+    if [ "$overwrite" = true ]; then
+      if [ -n "$backup_dir" ]; then
+        mkdir -p "$backup_dir"
+        cp "$input_image" "$backup_dir/"
+      fi
+      output_filename="$input_image"
+    else
+      output_filename="${base_filename}_${width}w-${height}h-of_${object_fit}.${extension}"
+    fi
+    "${convert_cmd[@]}" "$output_filename"
   fi
+}
+
+# New section to prepare files for processing
+declare -a all_files
+for input_item in "${input_images[@]}"; do
+  if [ -d "$input_item" ]; then
+    for file in "$input_item"/*; do
+      if [[ $file =~ \.(jpg|jpeg|png|gif)$ ]]; then  # Add more extensions if needed
+        all_files+=("$file")
+      fi
+    done
+  elif [ -f "$input_item" ]; then
+    all_files+=("$input_item")
+  else
+    echo -e "${RED}Input '$input_item' is not a valid file or directory.${NC}"
+  fi
+done
+
+# Process all collected files
+for file in "${all_files[@]}"; do
+  process_image "$file"
 done
 
 # Calculate elapsed time for this job
